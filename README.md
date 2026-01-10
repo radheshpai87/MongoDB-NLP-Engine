@@ -95,7 +95,7 @@ cd <repo-name>
 ### 2. Create and activate Python virtual environment
 ```bash
 cd apps/backend
-python3 -m venv .venv
+python3.11 -m venv .venv
 source .venv/bin/activate
 ```
 
