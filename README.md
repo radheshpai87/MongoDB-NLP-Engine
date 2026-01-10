@@ -10,7 +10,7 @@ The backend understands the intent and converts it into **safe MongoDB queries**
 
 ---
 
-## ✨ Features (Under Implementation)
+## Features (Under Implementation)
 
 - Natural language → MongoDB query conversion  
 - Safety-first design (no blind execution)  
@@ -21,7 +21,7 @@ The backend understands the intent and converts it into **safe MongoDB queries**
 
 ---
 
-## 🗂 Project Structure
+## Project Structure
 
 ```
 .
@@ -84,7 +84,7 @@ The backend understands the intent and converts it into **safe MongoDB queries**
 
 ---
 
-## 🚀 Backend Setup (Yet to be implemented)
+## Backend Setup (Yet to be implemented)
 
 ### 1. Clone the repository
 ```bash
@@ -126,7 +126,7 @@ http://127.0.0.1:8000/docs
 
 ---
 
-## 🔐 Environment Variables
+## Environment Variables
 
 Create a `.env` file using the provided example:
 
@@ -142,7 +142,7 @@ APP_ENV=development
 
 ---
 
-## 🧠 Philosophy
+## Philosophy
 
 - **Human-first**: built for non-technical users  
 - **Safety-first**: no destructive actions without confirmation  
@@ -151,13 +151,13 @@ APP_ENV=development
 
 ---
 
-## 📌 Status
+## Status
 
 This project is in **early development**.  
 Structure and foundations are intentionally kept simple and extensible.
 
 ---
 
-## 📄 License
+## License
 
 MIT License
