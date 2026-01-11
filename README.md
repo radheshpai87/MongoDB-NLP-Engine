@@ -87,8 +87,18 @@ The backend understands the intent and converts it into **safe MongoDB queries**
 ## Getting Started
 
 ### Prerequisites
-- Docker
-- Docker Compose
+
+Install Docker and Docker Compose by following the official documentation:
+
+- **Windows**: [Install Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
+- **macOS**: [Install Docker Desktop for Mac](https://docs.docker.com/desktop/install/mac-install/)
+- **Linux**: [Install Docker Engine](https://docs.docker.com/engine/install/)
+
+Verify installation:
+```bash
+docker --version
+docker compose version
+```
 
 ### Setup
 
