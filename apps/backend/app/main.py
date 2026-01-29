@@ -18,5 +18,5 @@ app.add_middleware(
 def health_check():
     return {
         "status": "ok",
-        "message": "Hello from FastAPI"
+        "message": "Hello from FastAPI!!"
     }
