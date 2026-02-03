@@ -21,20 +21,23 @@ async def startup_db_client():
     await connect_to_mongo()
     # Insert some dummy data
     db = get_database()
-    users_collection = db["users"]
+    companies_collection = db["companies"]
     
     # Clear existing data
-    await users_collection.delete_many({})
+    await companies_collection.delete_many({})
     
-    # Insert dummy users
-    dummy_users = [
-        {"name": "Alice Johnson", "email": "alice@example.com", "role": "Developer", "status": "Active", "joined": datetime(2024, 1, 15)},
-        {"name": "Bob Smith", "email": "bob@example.com", "role": "Designer", "status": "Active", "joined": datetime(2024, 2, 20)},
-        {"name": "Charlie Brown", "email": "charlie@example.com", "role": "Manager", "status": "Active", "joined": datetime(2024, 3, 10)},
-        {"name": "Diana Prince", "email": "diana@example.com", "role": "Developer", "status": "Active", "joined": datetime(2024, 4, 5)},
-        {"name": "Eve Davis", "email": "eve@example.com", "role": "QA Engineer", "status": "Away", "joined": datetime(2024, 5, 12)},
+    # Insert dummy companies
+    dummy_companies = [
+        {"name": "TechCorp Inc", "industry": "Technology", "revenue": 5000000, "employees": 150, "founded": datetime(2015, 3, 10), "status": "Active"},
+        {"name": "Global Solutions", "industry": "Consulting", "revenue": 8500000, "employees": 220, "founded": datetime(2012, 7, 22), "status": "Active"},
+        {"name": "DataFlow Systems", "industry": "Software", "revenue": 3200000, "employees": 85, "founded": datetime(2018, 1, 5), "status": "Active"},
+        {"name": "Innovate Labs", "industry": "Research", "revenue": 2100000, "employees": 45, "founded": datetime(2020, 9, 14), "status": "Active"},
+        {"name": "CloudNet Services", "industry": "Cloud Computing", "revenue": 12000000, "employees": 320, "founded": datetime(2010, 11, 30), "status": "Active"},
+        {"name": "SecureVault Inc", "industry": "Cybersecurity", "revenue": 6700000, "employees": 180, "founded": datetime(2016, 5, 18), "status": "Active"},
+        {"name": "AgriTech Solutions", "industry": "Agriculture", "revenue": 4300000, "employees": 120, "founded": datetime(2017, 8, 9), "status": "Active"},
+        {"name": "FinanceHub", "industry": "Finance", "revenue": 9800000, "employees": 250, "founded": datetime(2013, 4, 25), "status": "Active"},
     ]
-    await users_collection.insert_many(dummy_users)
+    await companies_collection.insert_many(dummy_companies)
     print("✨ Dummy data inserted!")
 
 @app.on_event("shutdown")
@@ -48,16 +51,16 @@ def health_check():
         "message": "Hello from FastAPI 👋"
     }
 
-@app.get("/api/users")
-async def get_users():
+@app.get("/api/companies")
+async def get_companies():
     db = get_database()
-    users_collection = db["users"]
-    users = []
+    companies_collection = db["companies"]
+    companies = []
     
-    async for user in users_collection.find():
-        user["_id"] = str(user["_id"])
-        if "joined" in user:
-            user["joined"] = user["joined"].isoformat()
-        users.append(user)
+    async for company in companies_collection.find():
+        company["_id"] = str(company["_id"])
+        if "founded" in company:
+            company["founded"] = company["founded"].isoformat()
+        companies.append(company)
     
-    return {"users": users, "count": len(users)}
+    return {"companies": companies, "count": len(companies)}
