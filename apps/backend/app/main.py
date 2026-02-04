@@ -66,6 +66,12 @@ async def get_companies():
     
     async for company in companies_collection.find():
         company["_id"] = str(company["_id"])
+        # Convert datetime fields to ISO format
+        if "founded" in company:
+            company["founded"] = company["founded"].isoformat()
+        companies.append(company)
+    
+    return {"companies": companies, "count": len(companies)}
 
 @app.post("/api/query")
 async def natural_language_query(request: QueryRequest):
@@ -87,6 +93,37 @@ async def natural_language_query(request: QueryRequest):
         # Get database and collection
         db = get_database()
         collection = db[parsed["collection"]]
+        
+        # Handle queries asking for document with max/min value
+        if parsed.get("query_type") == "find_extreme":
+            agg = parsed["aggregation"]
+            agg_type = agg["type"]
+            field = agg["field"]
+            
+            # Sort by field and get the first document
+            sort_order = -1 if agg_type == "max" else 1
+            result = await collection.find_one(sort=[(field, sort_order)])
+            
+            if result:
+                result["_id"] = str(result["_id"])
+                # Convert datetime fields to ISO format
+                for key, value in result.items():
+                    if isinstance(value, datetime):
+                        result[key] = value.isoformat()
+                
+                return {
+                    "results": [result],
+                    "count": 1,
+                    "parsed_filter": {field: {"$" + agg_type: "document"}},
+                    "original_query": request.query
+                }
+            else:
+                return {
+                    "results": [],
+                    "count": 0,
+                    "error": "No documents found",
+                    "original_query": request.query
+                }
         
         # Handle aggregation queries
         if parsed.get("query_type") == "aggregation":
