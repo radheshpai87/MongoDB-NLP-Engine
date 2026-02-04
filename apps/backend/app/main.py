@@ -1,9 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from app.db.mongo import connect_to_mongo, close_mongo_connection, get_database
+from app.nlp.parser import NLPQueryParser
 from datetime import datetime
 
 app = FastAPI()
+nlp_parser = NLPQueryParser()
+
+class QueryRequest(BaseModel):
+    query: str
+    collection: str = "companies"
 
 # 👇 ADD THIS
 app.add_middleware(
@@ -59,6 +66,153 @@ async def get_companies():
     
     async for company in companies_collection.find():
         company["_id"] = str(company["_id"])
+        # Convert datetime fields to ISO format
+        if "founded" in company:
+            company["founded"] = company["founded"].isoformat()
+        companies.append(company)
+    
+    return {"companies": companies, "count": len(companies)}
+
+@app.post("/api/query")
+async def natural_language_query(request: QueryRequest):
+    """Process natural language query and return filtered or aggregated results"""
+    try:
+        # Parse the natural language query
+        parsed = nlp_parser.parse(request.query, request.collection)
+        
+        # Check if parsing failed
+        if "error" in parsed:
+            return {
+                "results": [],
+                "count": 0,
+                "error": parsed["error"],
+                "parsed_filter": {},
+                "original_query": request.query
+            }
+        
+        # Get database and collection
+        db = get_database()
+        collection = db[parsed["collection"]]
+        
+        # Handle queries asking for document with max/min value
+        if parsed.get("query_type") == "find_extreme":
+            agg = parsed["aggregation"]
+            agg_type = agg["type"]
+            field = agg["field"]
+            
+            # Sort by field and get the first document
+            sort_order = -1 if agg_type == "max" else 1
+            result = await collection.find_one(sort=[(field, sort_order)])
+            
+            if result:
+                result["_id"] = str(result["_id"])
+                # Convert datetime fields to ISO format
+                for key, value in result.items():
+                    if isinstance(value, datetime):
+                        result[key] = value.isoformat()
+                
+                return {
+                    "results": [result],
+                    "count": 1,
+                    "parsed_filter": {field: {"$" + agg_type: "document"}},
+                    "original_query": request.query
+                }
+            else:
+                return {
+                    "results": [],
+                    "count": 0,
+                    "error": "No documents found",
+                    "original_query": request.query
+                }
+        
+        # Handle aggregation queries
+        if parsed.get("query_type") == "aggregation":
+            agg = parsed["aggregation"]
+            agg_type = agg["type"]
+            field = agg["field"]
+            
+            if agg_type == "count":
+                count = await collection.count_documents({})
+                return {
+                    "query_type": "aggregation",
+                    "aggregation_result": {
+                        "operation": "count",
+                        "value": count,
+                        "field": field
+                    },
+                    "original_query": request.query
+                }
+            
+            # For sum, avg, max, min
+            pipeline = []
+            if agg_type == "sum":
+                pipeline = [{"$group": {"_id": None, "result": {"$sum": f"${field}"}}}]
+            elif agg_type == "avg":
+                pipeline = [{"$group": {"_id": None, "result": {"$avg": f"${field}"}}}]
+            elif agg_type == "max":
+                pipeline = [{"$group": {"_id": None, "result": {"$max": f"${field}"}}}]
+            elif agg_type == "min":
+                pipeline = [{"$group": {"_id": None, "result": {"$min": f"${field}"}}}]
+            
+            if pipeline:
+                cursor = collection.aggregate(pipeline)
+                result = await cursor.to_list(length=1)
+                value = result[0]["result"] if result else 0
+                
+                return {
+                    "query_type": "aggregation",
+                    "aggregation_result": {
+                        "operation": agg_type,
+                        "field": field,
+                        "value": value
+                    },
+                    "original_query": request.query
+                }
+        
+        # Handle filter queries
+        # Get one document to check available fields
+        sample_doc = await collection.find_one()
+        if sample_doc:
+            available_fields = list(sample_doc.keys())
+            available_fields.remove("_id")
+            
+            # Check if queried field exists in collection
+            queried_fields = list(parsed["filter"].keys())
+            if queried_fields:
+                invalid_fields = [f for f in queried_fields if f not in available_fields]
+                if invalid_fields:
+                    return {
+                        "results": [],
+                        "count": 0,
+                        "error": f"Field '{invalid_fields[0]}' not found in collection. Available fields: {', '.join(available_fields)}",
+                        "parsed_filter": parsed["filter"],
+                        "original_query": request.query
+                    }
+        
+        # Execute filter query
+        results = []
+        async for doc in collection.find(parsed["filter"]):
+            doc["_id"] = str(doc["_id"])
+            # Convert datetime fields to ISO format
+            for key, value in doc.items():
+                if isinstance(value, datetime):
+                    doc[key] = value.isoformat()
+            results.append(doc)
+        
+        return {
+            "results": results,
+            "count": len(results),
+            "parsed_filter": parsed["filter"],
+            "original_query": request.query
+        }
+    except Exception as e:
+        return {
+            "results": [],
+            "count": 0,
+            "error": f"Query execution failed: {str(e)}",
+            "parsed_filter": {},
+            "original_query": request.query
+        }
         if "founded" in company:
             company["founded"] = company["founded"].isoformat()
         companies.append(company)
